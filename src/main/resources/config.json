@@ -1,0 +1,4 @@
+{
+  "fileSkipList": ["desktop.ini", "project.mobirise", "deploy.sc", ".gitignore", "publish-hashes.json", "project.mobirise"],
+  "folderSkipList": ["history", ".git"]
+}
