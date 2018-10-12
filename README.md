@@ -12,12 +12,8 @@ This project helps to extend an website created by Mobirise by adding additional
 scala mbdeployer-<version>.jar [/path/to/source/folder] [/path/to/destination/folder]
 `
 
-The source folder is typically where the Mobirise project has been published. The `/path/to/source/folder` and `/path/to/destination/folder` can be omitted: the default values are:
+The source folder is typically where the Mobirise project has been published. The `/path/to/source/folder` and `/path/to/destination/folder` can be omitted by specifying them in the `application.conf` file and recompiling.
 
-```
-Source folder:  /home/samik/git/myoptcloud-web
-Destination folder:  /home/samik/firebase/public
-```
 
 ## Code enhancement using JSON files
 The code enhancements are encoded in the json file as a list of modifications that are to be done. The type of modifications supported are:
@@ -94,25 +90,4 @@ Since JSON format doesn't allow multi-line strings, we are using an array constr
 ### Developing the code snippets
 
 ### Usage notes
-Use this system in conjunction with javascript files that can be stored in the `assets` folder. One or more of these JS files can be included automatically in every page, by using the same box which is provided for including the Google Analytics code snippet. An example is shown below:
-
-```$xslt
-<!-- Google Analytics -->
-<script src="assets/pages/utils.js"></script>
-<!-- Global site tag (gtag.js) - Google Analytics -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=UA-113150706-2"></script>
-<script>
-var host = window.location.hostname;
-if(host != "localhost")
-{
-  window.dataLayer = window.dataLayer || [];
-  function gtag(){dataLayer.push(arguments);}
-  gtag('js', new Date());
-
-  gtag('config', 'UA-113150706-2');
-}
-</script>
-<!-- /Google Analytics -->
-```
-
-Notice pulling in an `utils.js` files, which contains a bunch of helper functions. These functions can be called from any UI button by using `javascript: functionName()` style URL.
+The line numbers have to be specified carefully. Consecutive application of modifications mentioned in the code can result in shifting lines.
