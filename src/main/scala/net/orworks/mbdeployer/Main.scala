@@ -22,7 +22,12 @@ object Main extends App
 
     // Get the JSON file containing global code changes
     val globalJSONFile = new File(s"${sourceBase.getCanonicalPath}/global.json")
-    val globalEdits = if(globalJSONFile.exists()) Json.parse(getFileAsString(globalJSONFile)).asMap("items").asArray.map(_.asMap) else Array[Map[String,Json.Value]]()
+    val (globalFileSkipList, globalEdits) = if(globalJSONFile.exists())
+        {
+            val fileJson = Json.parse(getFileAsString(globalJSONFile))
+            (fileJson.asMap("globalFileSkipList").asArray.map(_.toString), fileJson.asMap("items").asArray.map(_.asMap))
+        }
+    else (Array[String](), Array[Map[String,Json.Value]]())
     if(globalEdits.length > 0) println(s"Using global enhancement list from [${globalJSONFile.getPath}], count of global enhancements: ${globalEdits.length}")
 
     // Collect the list of all files that needs to be processed
@@ -48,7 +53,9 @@ object Main extends App
                 val fileEdits = if(editFile.exists()) Json.parse(getFileAsString(editFile)).asMap("items").asArray.map(_.asMap) else Array[Map[String,Json.Value]]()
 
                 // Now combine global edits and local edits, and apply them in order
-                globalEdits.union(fileEdits).foreach(edit =>
+                // Check that this file is not in the global fileskiplist.
+                val editList = (if(globalFileSkipList.contains(destPath.getFileName().toString)) globalEdits else Array[Map[String,Json.Value]]()).union(fileEdits)
+                editList.foreach(edit =>
                     edit("action").asString match
                     {
                         case "insert" =>
