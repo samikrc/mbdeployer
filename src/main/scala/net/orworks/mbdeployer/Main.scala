@@ -4,16 +4,33 @@ import java.io._
 import java.nio.file._
 
 import scala.io.Source
+import scala.collection.mutable
 
 object Main extends App
 {
     if(args.length == 0)
-        println(s"Usage: scala mbdeployer-<version>.jar [/path/to/source/folder] [/path/to/destination/folder]")
+        println(s"Usage: scala mbdeployer-<version>.jar [/path/to/source/folder] [/path/to/destination/folder] [-all]")
+
+    /**
+      * Extension class for arrays
+      * @param array
+      * @tparam A
+      */
+    implicit class ArrayUtils[A](array: Array[A])
+    {
+        /**
+          * Method to check if an array doesn't contain an element.
+          * @param elem
+          * @tparam A
+          * @return
+          */
+        def doesntContain[A](elem: A) = !array.contains(elem)
+    }
 
     val sourceBase = new File(if(args.length == 0) "/home/samik/git/myoptcloud-web" else args(0))
-    println(s"Using source base: [${sourceBase.getPath}]")
+    println(s"** Using source base: [${sourceBase.getPath}]")
     val destinationBase = new File(if(args.length == 0) "/home/samik/firebase/public" else args(1)).getCanonicalPath
-    println(s"Using destination base: [$destinationBase]")
+    println(s"** Using destination base: [$destinationBase]")
 
     // Read the default skiplists from config file
     val configJson = Json.parse(Source.fromInputStream(getClass.getResourceAsStream("/config.json")).getLines().mkString(" "))
@@ -28,11 +45,18 @@ object Main extends App
             (fileJson.asMap("globalFileSkipList").asArray.map(_.toString), fileJson.asMap("items").asArray.map(_.asMap))
         }
     else (Array[String](), Array[Map[String,Json.Value]]())
-    if(globalEdits.length > 0) println(s"Using global enhancement list from [${globalJSONFile.getPath}], count of global enhancements: ${globalEdits.length}")
+    if(globalEdits.length > 0) println(s"** Using global enhancement list from [${globalJSONFile.getPath}], count of global enhancements: ${globalEdits.length}")
 
     // Collect the list of all files that needs to be processed
     val allFiles = getRecursiveListOfFiles(sourceBase)
-    // Now copy
+
+    // Load saved information about last timestamp of each of the files
+    val savedTSPath = s"${System.getProperty("java.io.tmpdir")}/lastModDates.tmp"
+    val savedFileTS = new File(savedTSPath)
+    val lastModDates = mutable.HashMap[String, Long]() ++= (if(savedFileTS.exists()) (Json.parse(this.getFileAsString(savedFileTS))).asMap.map(tp => tp._1 -> tp._2.asLong) else mutable.HashMap[String, Long]())
+    if(lastModDates.size > 0) println(s"** Using last modified timestamps loaded from [$savedTSPath], # of entries loaded: ${lastModDates.size}. To skip timestamp comparison, use '-all' at the command line.")
+
+    // Now start copying
     allFiles.foreach(entry =>
     {
         // Construct the destination paths
@@ -40,6 +64,8 @@ object Main extends App
 
         if(entry.isDirectory)
             new File(destPath.toString).mkdirs()
+        else if(args.doesntContain("-all") && entry.lastModified() == lastModDates.getOrElse(entry.getAbsolutePath, 0))
+            println(s"Skipping [${entry.toPath}]: File unchanged.")
         else
         {
             println(s"Processing: [${entry.toPath}]")
@@ -54,7 +80,7 @@ object Main extends App
 
                 // Now combine global edits and local edits, and apply them in order
                 // Check that this file is not in the global fileskiplist.
-                val editList = (if(globalFileSkipList.contains(destPath.getFileName().toString)) globalEdits else Array[Map[String,Json.Value]]()).union(fileEdits)
+                val editList = (if(globalFileSkipList.doesntContain(destPath.getFileName().toString)) globalEdits else Array[Map[String,Json.Value]]()).union(fileEdits)
                 editList.foreach(edit =>
                     edit("action").asString match
                     {
@@ -85,10 +111,15 @@ object Main extends App
             }
             else
                 Files.copy(entry.toPath, destPath, StandardCopyOption.REPLACE_EXISTING)
+
+            // Update last modification date
+            lastModDates(entry.getAbsolutePath) = entry.lastModified()
             println(s"Copied ${entry.toPath} to $destPath")
         }
     })
-    //allFiles.foreach(println)
+    // Finally, save the last modified file dates in a file.
+    Files.write(Paths.get(savedTSPath), new Json.Value(lastModDates.toMap).writeln.getBytes)
+    println(s"** Last modified timestamps saved at: [$savedTSPath], # of entries saved: ${lastModDates.size}")
 
     /**
       * Get a recursive listing of all files underneath the given directory.
@@ -105,5 +136,10 @@ object Main extends App
         these ++ these.filter(_.isDirectory).flatMap(getRecursiveListOfFiles)
     }
 
+    /**
+      * Method to get the contents of a file as String.
+      * @param file
+      * @return
+      */
     def getFileAsString(file: File) = Source.fromFile(file).getLines().mkString(" ")
 }

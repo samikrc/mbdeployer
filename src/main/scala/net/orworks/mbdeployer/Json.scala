@@ -28,6 +28,10 @@ object Json
         val NULL, INT, DOUBLE, BOOLEAN, STRING, ARRAY, OBJECT = Value
     }
 
+    /**
+      * Encapsulates a JSON structure from any of the supported data type.
+      * @param input_value
+      */
     class Value(input_value: Any)
     {
 
@@ -66,6 +70,10 @@ object Json
 
         def apply(key: String): Value = value.asInstanceOf[Map[String, Value]](key)
 
+        /**
+          * Method to write this object as JSON string.
+          * @return
+          */
         def write: String =
         {
             val buffer = new mutable.StringBuilder()
@@ -73,6 +81,10 @@ object Json
             buffer.toString()
         }
 
+        /**
+          * Method to write this object as JSON string, ending with newline.
+          * @return
+          */
         def writeln: String = s"${write}\n"
 
         private val value: Any = input_value match
@@ -111,13 +123,9 @@ object Json
                     {
                         each =>
                         {
-                            if (each == '\\')
+                            if (each == '\\' || each == '"')
                             {
                                 buffer.append('\\')
-                            }
-                            else if(each == '"')
-                            {
-                                buffer.append("\\\"")
                             }
                             else if (each == '\b')
                             {
@@ -356,3 +364,4 @@ object Json
         Value(sta.head._2)
     }
 }
+
