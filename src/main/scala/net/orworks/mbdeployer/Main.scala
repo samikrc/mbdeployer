@@ -8,8 +8,15 @@ import scala.collection.mutable
 
 object Main extends App
 {
-    if(args.length == 0)
-        println(s"Usage: scala mbdeployer-<version>.jar [/path/to/source/folder] [/path/to/destination/folder] [-all]")
+    if(args.length < 4)
+    {
+        println("Usage")
+        println("   scala mbdeployer-<version>.jar -s /path/to/source/folder -d /path/to/destination/folder [-all]")
+        println("Description")
+        println("   -s </path/to/source>    Source folder. Default can be mentioned in config.json file (needs recompilation)")
+        println("   -d </path/to/dest>    Destination folder. Default can be mentioned in config.json file (needs recompilation)")
+        println("   -all   [Optional] Copy all files without performing timestamp comparison. [default: Skip for same timestamps]")
+    }
 
     /**
       * Extension class for arrays
@@ -27,15 +34,16 @@ object Main extends App
         def doesntContain[A](elem: A) = !array.contains(elem)
     }
 
-    val sourceBase = new File(if(args.length == 0) "/home/samik/git/myoptcloud-web" else args(0))
-    println(s"** Using source base: [${sourceBase.getPath}]")
-    val destinationBase = new File(if(args.length == 0) "/home/samik/firebase/public" else args(1)).getCanonicalPath
-    println(s"** Using destination base: [$destinationBase]")
-
     // Read the default skiplists from config file
-    val configJson = Json.parse(Source.fromInputStream(getClass.getResourceAsStream("/config.json")).getLines().mkString(" "))
+    val configJson = Json.parse(Source.fromInputStream(getClass.getResourceAsStream("/config.json")).getLines().mkString(" ")).asMap
     val fileSkipList = configJson("fileSkipList").asArray.map(_.asString)
     val folderSkipList = configJson("folderSkipList").asArray.map(_.asString)
+
+    // Set up source and destination folders. Read the default folders if provided.
+    val sourceBase = new File(if(args.contains("-s")) args(args.indexOf("-s") + 1) else configJson.getOrElse("sourceBase", throw new InstantiationException("Source folder has not been provided: use -s option.")).asString)
+    println(s"** Using source base: [${sourceBase.getPath}]")
+    val destinationBase = if(args.contains("-d")) args(args.indexOf("-d") + 1) else configJson.getOrElse("destinationBase", throw new InstantiationException("Destination folder has not been provided: use -d option.")).asString
+    println(s"** Using destination base: [$destinationBase]")
 
     // Get the JSON file containing global code changes
     val globalJSONFile = new File(s"${sourceBase.getCanonicalPath}/global.json")
@@ -51,10 +59,26 @@ object Main extends App
     val allFiles = getRecursiveListOfFiles(sourceBase)
 
     // Load saved information about last timestamp of each of the files
-    val savedTSPath = s"${System.getProperty("java.io.tmpdir")}/lastModDates.tmp"
+    val savedTSPath = s"${sourceBase.getPath}/lastModDates.json"
     val savedFileTS = new File(savedTSPath)
     val lastModDates = mutable.HashMap[String, Long]() ++= (if(savedFileTS.exists()) (Json.parse(this.getFileAsString(savedFileTS))).asMap.map(tp => tp._1 -> tp._2.asLong) else mutable.HashMap[String, Long]())
     if(lastModDates.size > 0) println(s"** Using last modified timestamps loaded from [$savedTSPath], # of entries loaded: ${lastModDates.size}. To skip timestamp comparison, use '-all' at the command line.")
+
+    // Define a function to check if the timestamps of the files have changed
+    def hasFileChanged(entry: File) =
+    {
+        entry.lastModified() != lastModDates.getOrElse(entry.getAbsolutePath, 0) ||
+        {
+            entry.toString.endsWith(".html") &&
+            {
+                val editFile = new File(entry.toString.replace(".html", ".json"))
+                // Check if either HTML file or the JSON file containing changes or the global JSON file have changed
+                (editFile.exists() && editFile.lastModified() != lastModDates.getOrElse(editFile.getAbsolutePath, 0)) ||
+                (globalJSONFile.exists() && globalJSONFile.lastModified() != lastModDates.getOrElse(globalJSONFile.getAbsolutePath, 0)
+                )
+            }
+        }
+    }
 
     // Now start copying
     allFiles.foreach(entry =>
@@ -64,7 +88,7 @@ object Main extends App
 
         if(entry.isDirectory)
             new File(destPath.toString).mkdirs()
-        else if(args.doesntContain("-all") && entry.lastModified() == lastModDates.getOrElse(entry.getAbsolutePath, 0))
+        else if(args.doesntContain("-all") && !hasFileChanged(entry))
             println(s"Skipping [${entry.toPath}]: File unchanged.")
         else
         {
@@ -106,6 +130,9 @@ object Main extends App
                     }
                 )
 
+                // Update last modification date for config file, if it exists
+                if(editFile.exists()) lastModDates(editFile.getAbsolutePath) = editFile.lastModified()
+
                 // Finally, write the file to the destination
                 Files.write(destPath, sourceFile.mkString("\n").getBytes)
             }
@@ -117,6 +144,8 @@ object Main extends App
             println(s"Copied ${entry.toPath} to $destPath")
         }
     })
+    // Save the last modification date for the global.json file
+    if(globalJSONFile.exists()) lastModDates(globalJSONFile.getAbsolutePath) = globalJSONFile.lastModified()
     // Finally, save the last modified file dates in a file.
     Files.write(Paths.get(savedTSPath), new Json.Value(lastModDates.toMap).writeln.getBytes)
     println(s"** Last modified timestamps saved at: [$savedTSPath], # of entries saved: ${lastModDates.size}")
@@ -142,4 +171,5 @@ object Main extends App
       * @return
       */
     def getFileAsString(file: File) = Source.fromFile(file).getLines().mkString(" ")
+
 }

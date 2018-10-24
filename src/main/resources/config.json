@@ -1,4 +1,6 @@
 {
-  "fileSkipList": ["desktop.ini", "project.mobirise", "deploy.sc", ".gitignore", "publish-hashes.json"],
-  "folderSkipList": ["history", ".git"]
+  "fileSkipList": ["desktop.ini", "project.mobirise", "deploy.sc", ".gitignore", "publish-hashes.json", "lastModDates.json"],
+  "folderSkipList": ["history", ".git"],
+  "sourceBase": "/home/samik/git/myoptcloud-web",
+  "destinationBase": "/home/samik/firebase/public"
 }

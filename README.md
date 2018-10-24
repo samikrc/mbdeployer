@@ -1,4 +1,8 @@
-This project helps to extend an website created by Mobirise by adding additional code to specific blocks in each HTML file.
+This project helps to extend an website created by HTML composition systems (e.g., Mobirise) by adding additional code to specific blocks in each HTML file. This helps to add custom code after the basic website has been developed using these systems.
+
+## Prerequisites
+* JDK/JRE
+* Scala [http://www.scala-lang.org/], > 2.11.8 
 
 ## Usage
 
@@ -9,20 +13,20 @@ This project helps to extend an website created by Mobirise by adding additional
 **Step 3**: Run the following:
 
 `
-scala mbdeployer-<version>.jar [/path/to/source/folder] [/path/to/destination/folder]
+scala mbdeployer-<version>.jar -s [/path/to/source/folder] -d [/path/to/destination/folder] [-all]
 `
 
-The source folder is typically where the Mobirise project has been published. The `/path/to/source/folder` and `/path/to/destination/folder` can be omitted by specifying them in the `application.conf` file and recompiling.
+The source folder is typically where the project in HTML composition systems (e.g., Mobirise) has been published. The `/path/to/source/folder` and `/path/to/destination/folder` can be omitted by specifying them in the `application.conf` file and recompiling.
 
 
 ## Code enhancement using JSON files
-The code enhancements are encoded in the json file as a list of modifications that are to be done. The type of modifications supported are:
+The code enhancements are encoded in the json file as a list of modifications that are to be applied to the HTML file. The type of modifications supported are:
 
 * Insert a code block at a particular line
 * Delete one or more line(s)
 * Replace one or more line(s) with one or more line(s)
 
-The above two modifications performed in specific order can be used for replacement of lines as well. The modifications are applied in the same order as they are mentioned in the code.
+The modifications are applied in the same order as they are mentioned in the code.
 
 ### Type of enhancements
 Two type of enhancements are supported:
