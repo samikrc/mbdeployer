@@ -2,7 +2,7 @@ This project helps to extend an website created by Mobirise by adding additional
 
 ## Usage
 
-**Step 1**: Publish using Mobirise.
+**Step 1**: Publish using Mobirise to a folder.
 
 **Step 2**: Setup the JSON files for code enhancement.
 
